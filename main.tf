@@ -1,17 +1,31 @@
-resource "mongodbatlas_project" "atlas" {
-  name   = var.project_name
-  org_id = var.org_id
+# resource "mongodbatlas_project" "atlas" {
+#   name   = var.project_name
+#   org_id = var.org_id
+# }
+
+# data "mongodbatlas_clusters" "this" {
+#   project_id = mongdbatlas_project.atlas.id
+# }
+
+# data "mongodbatlas_cluster" "this" {
+#   for_each = toset(data.mongodbatlas_clusters.this.results[*].name)
+
+#   project_id = mongdbatlas_project.atlas.id
+#   name       = each.value
+# }
+
+data "local_file" "getfile" {
+  filename = "${path.module}/data.json"
 }
 
-data "mongodbatlas_clusters" "this" {
-  project_id = mongdbatlas_project.atlas.id
+locals {
+  configfile = jsondecode(data.local_file.getfile.content)
 }
 
-data "mongodbatlas_cluster" "this" {
-  for_each = toset(data.mongodbatlas_clusters.this.results[*].name)
-
-  project_id = mongdbatlas_project.atlas.id
-  name       = each.value
+  connection_strings = {
+    for svc in var.service_configuration :
+    # your code magic here to construct the correct connection string based on the following convention mongodb+srv://[username]:[password]@[cluster]/[db]/[collection]
+  }
 }
 
 resource "random_password" "store-service-password" {
@@ -23,18 +37,18 @@ resource "random_password" "store-service-password" {
 
 resource "mongodbatlas_database_user" "store-service-user" {
   # create a username for the service (e.g. the service name)
-  username = "${var.environment}-${each.key}"
+  username = var.environment
 
   # create a password for the service 
   password = random_password.store-service-password.result
 
   # Create the right role (read only permissions) for this user and service
   dynamic "roles" {
-    for_each = each.value.mongoCollection[*]
+    for_each = local.configfile.service_configuration
     content {
       role_name       = "read"
-      database_name   = each.value.mongoDatabase
-      collection_name = roles.value
+      database_name   = roles.value.mongoDatabase
+      collection_name = roles.value.mongoCollection
     }
   }
 }
@@ -45,3 +59,9 @@ resource "mongodbatlas_database_user" "store-service-user" {
 
 # output connection_strings {
 #         value = lookup(mongodbatlas_cluster.this.connection_strings.0.standard_srv)
+
+output "connection" {
+  value = [
+    for s in toset(local.configfile.service_configuration) : s
+  ]
+}
