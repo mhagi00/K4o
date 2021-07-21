@@ -1,18 +1,18 @@
-# resource "mongodbatlas_project" "atlas" {
-#   name   = var.project_name
-#   org_id = var.org_id
-# }
+resource "mongodbatlas_project" "this" {
+  name   = var.project_name
+  org_id = var.org_id
+}
 
-# data "mongodbatlas_clusters" "this" {
-#   project_id = mongdbatlas_project.atlas.id
-# }
+data "mongodbatlas_clusters" "this" {
+  project_id = mongdbatlas_project.this.id
+}
 
-# data "mongodbatlas_cluster" "this" {
-#   for_each = toset(data.mongodbatlas_clusters.this.results[*].name)
+data "mongodbatlas_cluster" "this" {
+  for_each = toset(data.mongodbatlas_clusters.this.results[*].name)
 
-#   project_id = mongdbatlas_project.atlas.id
-#   name       = each.value
-# }
+  project_id = mongdbatlas_project.this.id
+  name       = each.value
+}
 
 data "local_file" "getfile" {
   filename = "${path.module}/data.json"
@@ -22,11 +22,11 @@ locals {
   configfile = jsondecode(data.local_file.getfile.content)
 }
 
-  connection_strings = {
-    for svc in var.service_configuration :
-    # your code magic here to construct the correct connection string based on the following convention mongodb+srv://[username]:[password]@[cluster]/[db]/[collection]
-  }
-}
+#   connection_strings = {
+#     for svc in var.service_configuration :
+#     # your code magic here to construct the correct connection string based on the following convention mongodb+srv://[username]:[password]@[cluster]/[db]/[collection]
+#   }
+# }
 
 resource "random_password" "store-service-password" {
   # Generate a unique new password for the DB user
